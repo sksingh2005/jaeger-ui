@@ -172,6 +172,7 @@ function TimelineViewingLayer(props: TimelineViewingLayerProps) {
       onMouseMove: handleReframeMouseMove,
     });
   }
+  const draggerReframe = draggerReframeRef.current;
 
   const previousBoundsInvalidatorRef = React.useRef(boundsInvalidator);
   React.useEffect(() => {
@@ -200,9 +201,9 @@ function TimelineViewingLayer(props: TimelineViewingLayerProps) {
       aria-hidden
       className="TimelineViewingLayer"
       ref={rootRef}
-      onMouseDown={draggerReframeRef.current.handleMouseDown}
-      onMouseLeave={draggerReframeRef.current.handleMouseLeave}
-      onMouseMove={draggerReframeRef.current.handleMouseMove}
+      onMouseDown={draggerReframe.handleMouseDown}
+      onMouseLeave={draggerReframe.handleMouseLeave}
+      onMouseMove={draggerReframe.handleMouseMove}
     >
       {cursorPosition != null && (
         <div className="TimelineViewingLayer--cursorGuide" style={{ left: cursorPosition }} />
