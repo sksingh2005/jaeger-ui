@@ -61,6 +61,10 @@ const config: KnipConfig = {
         // AUTO-GENERATED from the Jaeger OpenAPI spec (`pnpm run generate:api-types`).
         // Treat as an entry point so knip considers all its exports intentionally public.
         'src/api/v3/generated-client.ts',
+        // Public schema boundary for v3 trace route; exports are consumed by tests and
+        // future parser code. Treat as entry so knip does not flag refinements as unused
+        // before the parser lands (first step is schema-only).
+        'src/api/v3/schemas.ts',
         // Example UI config file; not imported by source but consumed directly by the
         // jaeger binary and the Vite dev server.
         'jaeger-ui.config.console-analytics.js',
