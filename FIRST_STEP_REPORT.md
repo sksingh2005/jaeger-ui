@@ -159,9 +159,32 @@ All are `OPEN` against `jaegertracing/jaeger-ui` as of 2026-09-03 (`gh api pulls
 
 ## 7. Recommended next actions (per proposal collaboration plan)
 
-1. **Reconcile PRs before opening new one:** `gh pr view 4129 --json body` vs `gh pr view 3890 --json body` vs local `schemas.ts:41`; adopt streaming envelope handling from `4129`, keep `3890`'s `.partial()` fix, keep our hex/BigInt/enum/AnyValue refinements; close duplication.
-2. **Shepherd smallest composable unit:** land `GetTraceResponseSchema` + `fetchTrace` validation PR first (our file), credit `3890` author for re-export, `4129` author for streaming logic.
-3. **Then rebase `4129` parser** onto validated boundary — replace parser-local wire interfaces with `schemas.ts` types, preserve alias caching/critical-path, wire `useTrace`/`useTraces`, add parity + 80k-span bench before deleting facade.
+**Sequencing confirmed: help `3890` → push yours rebased on `3890` → help `4129` consume it.** This keeps one validated source per `ADR-0002:40` and makes `3890` + `4129` connect as `#4278` requires (schema half + parser half = one validated path), per `proposal:151` helping counts as deliverable.
+
+1. **Help `3890` land first** — `3890` is the base `generated → schemas.ts` re-export that all later steps import. Post `pr-3890-comment.txt:1` on `https://github.com/jaegertracing/jaeger-ui/pull/3890` (drop convenience-export injection, export 13 trace/span schemas via `schemas.<qualified-name>` like `main:packages/jaeger-ui/src/api/v3/schemas.ts:18`, keep `.partial()` restore for recursive `AnyValue/ArrayValue/KeyValueList/KeyValue` in `postprocess` with suffix `\w*AnyValue`). Let author push or `gh pr checkout 3890 && git push` if `allow edits` is on. This unblocks regeneration (`opentelemetry_proto_common_v1_AnyValue` vs bare `AnyValue` → `TS2304` ×16) and restores union `.partial()`.
+
+2. **Then push yours `lfx-week1-validated-wire-contract:8df6768c` rebased on landed `3890`** — your `schemas.ts:34` `traceIdHex`/`schemas.ts:41` `decimalNanoString`/`schemas.ts:48` `spanKindEnum`/`schemas.ts:76` `refinedAnyValue` one-of/`schemas.ts:192` `GetTraceResponseSchema` is the refinement layer `proposal:99` that `3890` alone lacks.
+
+   ```bash
+   git checkout lfx-week1-validated-wire-contract
+   git fetch origin && git rebase origin/main   # picks up merged 3890's 13 exports
+   git push -u origin lfx-week1-validated-wire-contract
+   ```
+
+3. **Then help `4129` consume it** — `4129` (`src/api/v3/parser.ts:12` private `IOtlp*` + `client.ts:getTrace` streaming with brace tracking + `hooks/useTraceLoading.ts:33` wiring) should replace private wire interfaces with `import { TracesDataWire, GetTraceResponseSchema } from './schemas'` validated at `JaegerClient` boundary (`client.ts:140`), not in parser. Rebase `4129` on step 2, preserve iterative parser + parity tests.
+
+### 7.1 What to look at in weeks 1–2 (scope)
+
+**Weeks 1–2 = `proposal:201` _Validated v3 wire contract_ only. The only PRs you need to review are `3890` (and its closed alt `3977` for comparison) — not `4129`'s parser, not `4048`/`4376`/`4112`:**
+
+| PR | Needed in weeks 1–2? | Why |
+| --- | --- | --- |
+| **#3890** | **Yes — primary** | Schema half: exposes OTLP `TracesData`/`Span`/`AnyValue` etc to the boundary. Your refinements (`hex/BigInt/enum/AnyValue`) layer directly on top of it. `RFC 0002 §3.7` says decide `3890` vs `3977` before deep review. |
+| **#3977** | **Yes — read-only** | Competing refinement, already `CLOSED` 2026-08-24. Compare vs `3890` vs live `v3-trace-local-2.13.0.json:1` per `proposal:158`, take useful bits, do not re-open. |
+| **#4129** | **Context only** | Its `client.ts:getTrace` streaming envelope handling (concatenated `{"result":..}`) is worth reading for `schemas.ts:192` envelope separation, but its `parser.ts:12` private `IOtlp*` and hook wiring are **weeks 3–4** (`proposal:142` Native trace fetch). Don't review the parser in depth yet — it will be rebased onto your validated boundary after step 2. |
+| #4048 / #4376 / #4199 / #4112 | No | Redux/metrics, layout persist (`store.layout.ts`), upload error handling — separate migrations (`RFC 0004` / `RFC 0007`), weeks 6–11 per `proposal:201`. Note existence per `proposal:152` persistence seam, but no action now. |
+
+In short: **look at `3890` (+ closed `3977` as reference) in weeks 1–2; skim `4129`'s envelope code for awareness; defer `4129` parser and all `4xxx` non-trace PRs.** Post-`3890` landing, your `refined*` PR becomes the weeks 1–2 deliverable, then `4129` becomes the weeks 3–4 deliverable on top of it.
 
 ---
 
