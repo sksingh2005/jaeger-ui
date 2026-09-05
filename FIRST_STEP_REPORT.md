@@ -203,3 +203,24 @@ In short: **look at `3890` (+ closed `3977` as reference) in weeks 1–2; skim `
 **Next:** post `pr-3890-comment.txt:1` on `3890`, let it land, then `git checkout lfx-week1-validated-wire-contract && git rebase origin/main` to pick up the landed 13 exports, then help `4129` (`src/api/v3/parser.ts:12` private `IOtlp*` → `import { TracesDataWire } from './schemas'`) per `§7` sequencing. `4112` (`store.layout.ts` `persist`) stays deferred to week 11 (`§7.1`).
 
 _Pushed: `origin/lfx-week1-validated-wire-contract` and `origin/pr-3890-otel-schemas` on 2026-09-05. To land the refined contract: `git checkout lfx-week1-validated-wire-contract && pnpm run fmt && pnpm run lint && pnpm --filter jaeger-ui test src/api/v3 --run`._
+
+## 9. PR 4438 follow-through — 2026-09-05 (evening)
+
+`pr-3890-otel-schemas` is now PR [#4438](https://github.com/jaegertracing/jaeger-ui/pull/4438) (`feat(api/v3): Expose Zod schemas for OTLP trace/span types`, rebased successor to stale `3890`). CI `pnpm run lint` failed on `fmt-lint` (`postprocess-schemas.cjs` quoting) — fixed via `pnpm run fmt`; `tsc/oxlint/knip/overrides` collateral failures verified clean individually. Current tip `bcfc1645`, all pushed:
+
+| Commit | What |
+| --- | --- |
+| `9ccf1559` | Suffix-match union restore (`\w*AnyValue`), strict `KeyValue` |
+| `57dfeca8` | Exact **exported** `KeyValue` TS alias (fixes Copilot type-safety flag + `TS4023` ×9 on `schemas.ts:51` re-exports) |
+| `bcfc1645` | `api/v3/README.md` updated (13 OTLP re-exports, postprocess behavior, `schemas` bundle) |
+
+Copilot threads on `4438` and their resolution:
+
+- **KeyValue `Partial` alias vs strict schema** — real bug, fixed as above (only schema with the mismatch; other unions kept `.partial()`, rest have no `Partial` alias).
+- **`makeApi([...])` strip regex** (`\[\s\S]` → `\[[\s\S]`) — real bug, fixed; verified `node scripts/postprocess-schemas.cjs` runs clean and idempotent.
+- **Header listed `KeyValue` among unions** — fixed (header + inline comment now state only `AnyValue`/`ArrayValue`/`KeyValueList`; `KeyValue` strict).
+- **`minimal*` test helpers vs `status: {}` fixture** — comment clarified (`c767d4ca`, squashed): helpers pin the strict schemas, not wire shapes; fixture-permissive tests belong to the follow-up validated-contract layer.
+- **PR description claimed refinements not in diff** — `4438` title/body rewritten via `gh pr edit` to expose-only; refinements stay in `lfx-week1-validated-wire-contract`.
+- **Stripped `.partial()` / dropped Zodios** — both intentional and pre-existing design (strict validation; no `@zodios/core` runtime dep); pinned by 74 `schemas.test` rejection tests.
+
+Verification on `pr-3890-otel-schemas`: `fmt-lint` / `tsc-lint` / `oxlint` / `knip` / `overrides` / `license` / `tsx` all pass, `src/api/v3` **106/106** (`schemas.test` 74 + `client.test` 32).
