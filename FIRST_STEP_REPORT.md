@@ -188,4 +188,18 @@ In short: **look at `3890` (+ closed `3977` as reference) in weeks 1–2; skim `
 
 ---
 
-_Generated for review; not yet pushed. To land: `git add knip.config.ts packages/jaeger-ui/src/api/v3/{schemas.ts,client.ts,schemas.trace-contract.test.ts,client.trace-contract.test.ts} && pnpm run fmt && pnpm run lint && pnpm --filter @jaegertracing/jaeger-ui test src/api/v3/*`_
+## 8. Current sync — 2026-09-05
+
+**Where we are now (both branches backed up on `origin`):**
+
+- `lfx-week1-validated-wire-contract:b27955e2` (pushed `origin/lfx-week1-validated-wire-contract`) — validated wire contract with refinements (`schemas.ts:34` hex, `decimalNanoString`, `spanKindEnum`, `refinedAnyValue` one-of, `GetTraceResponseSchema` envelope via `lfx-term-3-evidence/fixtures/v3-trace-local-2.13.0.json:1` + `scripts/validate-v3-capture.sh:18`). `src/api/v3` 97/97 green on this branch (`schemas.trace-contract` 18 + `client.trace-contract` 7 + `schemas.test`/`client.test`).
+
+- `pr-3890-otel-schemas:81d1e3cd` (pushed `origin/pr-3890-otel-schemas`) — rebased `gkhulbe4:3890` onto `upstream/main:c681703d` (was 234 behind). Fixed the qualified drift `opentelemetry_proto_common_v1_AnyValue` (`main:generated-client.ts:105`) → `postprocess:52` suffix `\w*AnyValue` restore (3 unions, `KeyValue` stays strict as `schemas.test.ts:493` expects), `schemas.ts:78` 13 qualified `schemas.opentelemetry_proto_...` re-exports (no `<<<<<<<` markers), `generated-client.ts:91` qualified. `pnpm --filter jaeger-ui test src/api/v3 --run` **106/106** (`schemas.test` 74 + `client.test` 32) after `node scripts/postprocess-schemas.cjs` `Removed 13, restored 3`. The extra `8c0d38fb` “remove markers” commit was squashed — history is now `81d1e3cd` on top of `d3894929` (no stray fix commit) and all 4 original `gkhulbe4` commits remain `Signed-off-by`.
+
+- `pr-3890-comment.txt:1` is the suggestion + confirmation message for `https://github.com/jaegertracing/jaeger-ui/pull/3890` (suffix regex + move 13 exports to `schemas.ts`).
+
+**What was missing and is now fixed in `pr-3890`:** section `4.1` qualified-name breakage (`TS2304` ×16, silent `Could not restore .partial()`) — now resolved via suffix match and `schemas.ts` qualified destructuring, so `pnpm run generate:api-types` + `tsc --noEmit` are clean.
+
+**Next:** post `pr-3890-comment.txt:1` on `3890`, let it land, then `git checkout lfx-week1-validated-wire-contract && git rebase origin/main` to pick up the landed 13 exports, then help `4129` (`src/api/v3/parser.ts:12` private `IOtlp*` → `import { TracesDataWire } from './schemas'`) per `§7` sequencing. `4112` (`store.layout.ts` `persist`) stays deferred to week 11 (`§7.1`).
+
+_Pushed: `origin/lfx-week1-validated-wire-contract` and `origin/pr-3890-otel-schemas` on 2026-09-05. To land the refined contract: `git checkout lfx-week1-validated-wire-contract && pnpm run fmt && pnpm run lint && pnpm --filter jaeger-ui test src/api/v3 --run`._
