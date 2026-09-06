@@ -224,3 +224,17 @@ Copilot threads on `4438` and their resolution:
 - **Stripped `.partial()` / dropped Zodios** — both intentional and pre-existing design (strict validation; no `@zodios/core` runtime dep); pinned by 74 `schemas.test` rejection tests.
 
 Verification on `pr-3890-otel-schemas`: `fmt-lint` / `tsc-lint` / `oxlint` / `knip` / `overrides` / `license` / `tsx` all pass, `src/api/v3` **106/106** (`schemas.test` 74 + `client.test` 32).
+
+---
+
+## 10. Maintainer review pivot — 4438 is expose-only (2026-09-06)
+
+A maintainer review on `4438` ruled out the whole §4.1/§§7–9 postprocess-strip path — and it was right. Each claim was verified before acting:
+
+- **`#3964` removed the strip on purpose** — confirmed via `gh pr view 3964` (merged; IDL `field_behavior = REQUIRED`). The generated `.partial()` now expresses Proto3-accurate optionality.
+- **Strict schemas reject payloads backends actually send** — proven both directions with a scratch test: `otlp2jaeger-in.json` (`"status": {}`, no `traceState`/`flags`/`events`/`links`, resourceless `droppedAttributesCount`) **failed** `TracesDataSchema` with the strip (`ZodError`), **passed** on `upstream/main` without it (scratch deleted after).
+- **Requested outcome:** drop `postprocess-schemas.cjs` + `generated-client.ts` changes entirely (the suffix regexes, union-restore loop, and hand-edited `KeyValue` export in a `Do not edit manually` file existed only to compensate for the strip), keep the `schemas.ts` re-exports which need nothing from the script. Done in the `pr-3890-otel-schemas` working tree (uncommitted): both files reverted to `upstream/main`.
+- **Tests:** strip-dependent rejection cases and tautological minimal-object suites removed (`schemas.test.ts` 574 → 322 lines); kept services/operations/`TraceSummary`/hex untouched; added fixture test (`otlp2jaeger-in.json` → 1 resourceSpan / 2 `okey-dokey-0` spans / `status` `{}`), kept scalar/`kvlistValue`/nested-`arrayValue` `AnyValue` + passthrough. Supporting fixes for the new shape: `knip.config.ts` entry for `schemas.ts` (11 re-exports nothing imports yet), `!` assertions for re-optional fields, README strip language removed. Green: all lint lanes + `src/api/v3` **77/77**.
+- **Description:** must state supersedes `#3890` with `@gkhulbe4` credit up top and describe expose-only (drafted in `pr-4438-body.md`, not applied — remote write). `check-label`/changelog is the maintainer's own action.
+
+**What this means for this branch:** §§4.1/7–9 above are kept as record but their plan is superseded — there is no postprocess-based validation step anymore. All validation requirements (hex IDs, `BigInt` decimal strings, enums, `AnyValue` one-of, envelope, malformed-payload tests) live **entirely in this branch's refinement layer** (`schemas.ts` `refined*` + `GetTraceResponseSchema` + `client.ts` `fetchTrace`), which is exactly what `lfx-term-3-proposal.md:101` mandates (_"Output schema itself will not be modified; only aliases and refinements will remain in the boundary module"_) — so the proposal doc needs no change. Sequencing from §7 still holds: land expose-only `4438` first, then this refined layer rebases onto its 13 exports.
