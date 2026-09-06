@@ -24,7 +24,7 @@ All responses are validated at runtime using Zod schemas.
 - `TracesDataSchema`, `ResourceSpansSchema`, `ScopeSpansSchema`, `SpanSchema`, `SpanEventSchema`, `SpanLinkSchema`, `ResourceSchema`, `InstrumentationScopeSchema`, `KeyValueSchema`, `AnyValueSchema`, `ArrayValueSchema`, `KeyValueListSchema`, `StatusSchema` - Full OTLP trace/span surface for `/api/v3/traces/{trace_id}` consumers
 - `traceIdHex`, `spanIdHex` - Helper validators (manually added)
 
-**Note:** These schemas are **automatically post-processed** to enforce strict validation (removing the blanket `.partial()` Proto3/OpenAPI optionality, then restoring it only on the `AnyValue`/`ArrayValue`/`KeyValueList` oneof unions; `KeyValue` stays strict with an exact exported TS alias to match).
+**Note:** These schemas come straight from the codegen, which emits Proto3-accurate optionality (fields real payloads omit stay optional). Per-field requirements (hex IDs, decimal-string int64s, envelopes) belong as refinements layered in this file or a follow-up — never as regexes over the generated text.
 
 ### `generated-client.ts`
 
@@ -43,8 +43,9 @@ pnpm run generate:api-types
 This file is the source of truth for the full API schema. It is automatically processed by `scripts/postprocess-schemas.cjs` to:
 
 1. Prepend copyright header
-2. Enforce strict validation (strip blanket `.partial()`, restore it on the `AnyValue`/`ArrayValue`/`KeyValueList` unions by suffix match, unwrap + export the `KeyValue` alias to match its strict schema)
-3. Remove unused Zodios runtime code (we only use the Zod schemas, not the Zodios client)
+2. Remove unused Zodios runtime code (we only use the Zod schemas, not the Zodios client)
+
+As a rule, post-processing the generated file is a liability: new requirements belong in `jaeger-idl`, or as refinements layered in `schemas.ts` — not as regexes over generated text.
 
 ## Schema Strategy
 
@@ -52,7 +53,7 @@ We use **Automated Schema Generation with Strict Validation**:
 
 1. **`generated-client.ts`** - Auto-generated from OpenAPI
 2. **`postprocess-schemas.cjs`** - Automatically cleans up schema:
-   - Enforces strictness (fixes Proto3 optionality, keeps unions partial via suffix match)
+   - Prepends copyright header
    - Removes runtime dependencies
 3. **`schemas.ts`** - Re-exports the generated schemas via the `schemas` bundle under stable ergonomic names, plus `TraceSummary` refinements and hex ID helpers
 
