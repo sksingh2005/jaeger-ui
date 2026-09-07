@@ -246,3 +246,18 @@ A maintainer review on `4438` ruled out the whole §4.1/§§7–9 postprocess-st
 2. **Open the refined-contract PR** (title: `feat(api/v3): add validated refinements for v3 trace wire contract` — deliberately distinct from `4438`'s _Expose_ title): boundary refinements + `fetchTrace`/`getTrace` + `schemas.trace-contract` (18) / `client.trace-contract` (7) tests + live-capture fixture. Rollback stays `revert schema-only PR` per `proposal:139`.
 3. **Connect `4129`:** have its `src/api/v3/parser.ts` drop private `IOtlp*` wire interfaces for `import { TracesDataWire, GetTraceResponseSchema } from './schemas'` validated at the `JaegerClient` boundary — the `#4278` "schema half + parser half" link. Keep its iterative parser, streaming-envelope handling, and parity tests.
 4. **Then weeks 3–4:** wire `useTrace`/`useTraces` onto `getTrace`, same-trace visual parity + 50k–80k-span bench, and only then delete facade/transformer (`RFC 0002` Phase 4).
+
+---
+
+## 11. Refined-contract PR scope audit — milestone 3.5–3.7, no dead weight (2026-09-07)
+
+Clean branch `feat/api-v3-trace-contract` (single commit, from `upstream/main:4f3b7c95`) holds exactly 5 code files (`+596/−4`), nothing else. Necessity per file, checked by usage (every new export has 2+ references: definition + consumer/test):
+
+- `schemas.ts` (+173) — the `refined*` boundary (hex, `BigInt` decimal strings, enums, `AnyValue` one-of, envelope). Directly covers _"Complete Zod schema coverage"_ plus the validation half the milestone implies. Generated file + postprocess untouched per the standing rule.
+- `client.ts` (+31) — `fetchTrace` + `getTrace` alias (alias kept deliberately: `#4129`/`RFC 0002` name the hook `getTrace`).
+- `schemas.trace-contract.test.ts` (+281, 18 tests) / `client.trace-contract.test.ts` (+109, 7 tests) — valid capture + malformed-payload proof; the rollback evidence for `proposal:139`.
+- `knip.config.ts` (+6) — entry so the not-yet-consumed refinements don't flag as unused.
+
+Explicitly **not** in this PR (separate scope, not omission): IDL spec migration + `format: bytes` fix (jaeger-idl repo), `generate:api-types` script (already on `main`), MSW integration tests, backend smoke script. Explicitly excluded as noise: `pnpm-lock.yaml` churn (pnpm v12 self-bookkeeping, reverted twice), all report/proposal/scratch md (untracked, never staged).
+
+Milestone verdict: this PR + merged `4438` together close _"Complete Zod schema coverage"_; MSW + smoke script remain open and belong to a later testing PR, not this one.
