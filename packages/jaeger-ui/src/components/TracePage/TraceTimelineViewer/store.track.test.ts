@@ -294,7 +294,7 @@ describe('timeline analytics adapter', () => {
     timeline().setTrace(trace, new Set());
     expect(timeline().childrenHiddenIDs.has('parent')).toBe(true);
 
-    const lateMatch = makeSpan('late', 2, parent, { name: 'late-match' });
+    const lateMatch = makeSpan('late', 2, parent);
     const reloaded = { ...trace, spans: [...trace.spans, lateMatch] } as unknown as IOtelTrace;
     timeline().setTrace(reloaded, new Set(['late']));
     expect(timeline().childrenHiddenIDs.has('parent')).toBe(true);

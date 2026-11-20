@@ -288,6 +288,8 @@ describe('<TracePage>', () => {
     let match;
     let parent;
     let matches;
+    let lifecycleTrace;
+    let lifecycleProps;
 
     beforeEach(async () => {
       const stores = await vi.importActual('./TraceTimelineViewer/store');
@@ -298,7 +300,22 @@ describe('<TracePage>', () => {
       mockTimelineLifecycle.store = timeline;
       mockTraceTimelineStore.clearTrace.mockImplementation(() => timeline.getState().clearTrace());
       heightSpy = vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(100);
-      match = trace.spans.find(span => span.parentSpan);
+      // Fixed parent and child so the lifecycle tests never depend on a random trace shape.
+      const raw = traceGenerator.trace({ numberOfSpans: 2 });
+      const [rootSpan, childSpan] = raw.spans;
+      raw.spans = [
+        { ...rootSpan, references: [] },
+        {
+          ...childSpan,
+          startTime: rootSpan.startTime,
+          duration: Math.max(1, Math.floor(rootSpan.duration / 2)),
+          references: [{ refType: 'CHILD_OF', traceID: raw.traceID, spanID: rootSpan.spanID }],
+        },
+      ];
+      lifecycleTrace = transformTraceData(raw).asOtelTrace();
+      lifecycleProps = { ...defaultProps, params: { id: lifecycleTrace.traceID } };
+      useTraceMock.mockReturnValue({ data: lifecycleTrace, isPending: false, isError: false, error: null });
+      match = lifecycleTrace.spans.find(span => span.parentSpan);
       parent = match.parentSpan;
       matches = new Set([match.spanID]);
       filterSpansSpy.mockReturnValue(matches);
@@ -314,7 +331,7 @@ describe('<TracePage>', () => {
 
     it('reopens the same trace after page unmount with clean state and focused URL matches', () => {
       const pageProps = {
-        ...defaultProps,
+        ...lifecycleProps,
         uiFind: 'match',
         location: { ...defaultProps.location, search: '?uiFind=match' },
       };
@@ -336,8 +353,8 @@ describe('<TracePage>', () => {
 
       const secondVisit = render(<TracePage {...pageProps} />);
       try {
-        expect(timeline.getState().traceID).toBe(trace.traceID);
-        expect(timeline.getState().traceSpans).toBe(trace.spans);
+        expect(timeline.getState().traceID).toBe(lifecycleTrace.traceID);
+        expect(timeline.getState().traceSpans).toBe(lifecycleTrace.spans);
         expect(timeline.getState().childrenHiddenIDs.has(parent.spanID)).toBe(false);
         expect([...timeline.getState().detailStates.keys()]).toEqual([match.spanID]);
         expect(timeline.getState().shouldScrollToFirstUiFindMatch).toBe(true);
@@ -348,7 +365,7 @@ describe('<TracePage>', () => {
 
     it('keeps collapses and selection when switching to Statistics and back', () => {
       layout.setState({ detailPanelMode: 'sidepanel' });
-      const page = render(<TracePage {...defaultProps} uiFind="match" />);
+      const page = render(<TracePage {...lifecycleProps} uiFind="match" />);
       try {
         act(() => {
           timeline.getState().childrenToggle(parent.spanID);

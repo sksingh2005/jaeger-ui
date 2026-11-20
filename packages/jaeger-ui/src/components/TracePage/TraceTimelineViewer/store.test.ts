@@ -806,6 +806,27 @@ describe('trace timeline zustand stores', () => {
       expect(state.shouldScrollToFirstUiFindMatch).toBe(false);
       expect(state.spanFilter).toEqual(EMPTY_SPAN_FILTER);
     });
+    it('clearTrace resets the trace interaction state and keeps the span filter', () => {
+      const trace = makeTrace('cleared-trace', [makeSpan({ spanID: 'span-x' })]);
+      const spanFilter = withHiddenServices(EMPTY_SPAN_FILTER, new Set(['service']));
+      useTraceTimelineStore.getState().setTrace(trace);
+      useTraceTimelineStore.setState({
+        childrenHiddenIDs: new Set(['span-x']),
+        detailStates: new Map([['span-x', new DetailState()]]),
+        shouldScrollToFirstUiFindMatch: true,
+        spanFilter,
+      });
+
+      useTraceTimelineStore.getState().clearTrace();
+
+      const state = useTraceTimelineStore.getState();
+      expect(state.traceID).toBeNull();
+      expect(state.traceSpans).toBeNull();
+      expect(state.childrenHiddenIDs.size).toBe(0);
+      expect(state.detailStates.size).toBe(0);
+      expect(state.shouldScrollToFirstUiFindMatch).toBe(false);
+      expect(state.spanFilter).toBe(spanFilter);
+    });
     it('preserves manual interactions and layout preferences on same-ID reload', () => {
       const trace = makeTrace('same-trace', [makeSpan({ spanID: 'span-x' })]);
       useTraceTimelineStore.getState().setTrace(trace);
@@ -986,7 +1007,7 @@ describe('trace timeline zustand stores', () => {
         expect(useTraceTimelineStore.getState().childrenHiddenIDs.has('span-x')).toBe(true);
       });
 
-      it('preserves find-focus state on same-ID reload when spans change and uiFind is provided', () => {
+      it('does not refocus on same-ID reload when spans change and uiFind is provided', () => {
         vi.mocked(spanAncestorIds).mockReturnValue([]);
         const spans1 = [makeSpan({ spanID: 'span-1' })];
         const trace1 = makeTrace('t1', spans1);

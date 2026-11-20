@@ -318,9 +318,11 @@ export function TracePageImpl(props: TProps) {
       resetShortcuts();
       cancelScroll();
       sm.destroy();
-      useTraceTimelineStore.getState().clearTrace();
     };
   }, [adjustViewRange]);
+
+  // Unmount only: reopening the same trace is an open, not a reload. View switches keep the state.
+  useEffect(() => () => useTraceTimelineStore.getState().clearTrace(), []);
 
   useEffect(() => {
     scrollManagerRef.current.setTrace(traceData);
